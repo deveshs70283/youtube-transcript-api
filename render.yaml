@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: youtube-transcript-api
+    env: python
+    plan: free
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+  - type: web
+    name: youtube-heatmap-api
+    env: docker
+    plan: free
+    rootDir: youtube-heatmap-api
+    dockerfilePath: ./Dockerfile
