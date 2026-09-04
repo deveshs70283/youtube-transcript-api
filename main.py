@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException
 from youtube_transcript_api import (
     YouTubeTranscriptApi,
@@ -8,6 +10,7 @@ from youtube_transcript_api import (
     IpBlocked,
     RequestBlocked,
 )
+from youtube_transcript_api.proxies import WebshareProxyConfig
 
 app = FastAPI()
 
@@ -17,6 +20,16 @@ BLOCKED_DETAIL = (
     "through a proxy to fix."
 )
 
+# Proxy is optional: only used if both env vars are set on the host (e.g. Render).
+# Locally, or if unset, requests go out directly with no proxy.
+_proxy_username = os.environ.get("WEBSHARE_PROXY_USERNAME")
+_proxy_password = os.environ.get("WEBSHARE_PROXY_PASSWORD")
+_proxy_config = (
+    WebshareProxyConfig(proxy_username=_proxy_username, proxy_password=_proxy_password)
+    if _proxy_username and _proxy_password
+    else None
+)
+
 @app.get("/")
 def home():
     return {"status": "running"}
@@ -24,7 +37,7 @@ def home():
 @app.get("/transcript")
 def get_transcript(video_id: str):
 
-    api = YouTubeTranscriptApi()
+    api = YouTubeTranscriptApi(proxy_config=_proxy_config)
 
     # IpBlocked/RequestBlocked are subclasses of CouldNotRetrieveTranscript, so
     # they must be checked first or they'd be swallowed by the generic case below.
