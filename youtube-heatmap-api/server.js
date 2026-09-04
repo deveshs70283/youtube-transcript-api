@@ -53,13 +53,26 @@ app.post('/extract-heatmap', async (req, res) => {
 
   let browser;
   try {
-    browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    // --no-sandbox/--disable-dev-shm-usage are required for Chromium to run
+    // reliably inside a container (Render, Docker, etc.)
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    });
+    const page = await browser.newPage({ locale: 'en-US' });
 
     await page.goto(url, { waitUntil: 'domcontentloaded' });
 
+    // Cloud/datacenter IPs are often served a cookie-consent interstitial
+    // instead of the video page — dismiss it if present before continuing.
+    try {
+      await page.getByRole('button', { name: /accept all|i agree/i }).click({ timeout: 5000 });
+    } catch {
+      // No consent dialog shown — nothing to do.
+    }
+
     // The heatmap only renders once the player chrome and progress bar are ready
-    await page.waitForSelector('.ytp-chrome-bottom');
+    await page.waitForSelector('.ytp-chrome-bottom', { timeout: 45000 });
     await page.waitForSelector('.ytp-progress-bar');
     await page.hover('.ytp-progress-bar');
 
